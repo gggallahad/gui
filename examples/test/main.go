@@ -16,6 +16,15 @@ type (
 	}
 )
 
+var (
+	cursor Cursor = Cursor{
+		Symbol:      '?',
+		SymbolStyle: tcell.Style.Foreground(tcell.StyleDefault, tcell.ColorRed),
+		X:           5,
+		Y:           5,
+	}
+)
+
 func main() {
 	screen, err := gui.NewScreen()
 	if err != nil {
@@ -30,83 +39,65 @@ func main() {
 	}
 	defer screen.Close()
 
-	screen.Clear()
+	screen.BindInitHandler(InitHandler)
 
-	// go Tick(*screen)
+	screen.BindHandlers(gui.NoState, KillMiddleware, NoStateHandler)
 
-	cursor := Cursor{
-		Symbol:      '?',
-		SymbolStyle: tcell.Style.Foreground(tcell.StyleDefault, tcell.ColorRed),
-		X:           5,
-		Y:           5,
-	}
+	screen.Run()
+}
 
-	DrawCursorPosition(screen, cursor)
-	screen.Flush()
+func InitHandler(ctx *gui.Context) {
+	ctx.Clear()
+}
 
-	for {
-		eventType := screen.PollEvent()
-		switch event := eventType.(type) {
-		case *tcell.EventKey:
-			if event.Key() == tcell.KeyEscape || event.Rune() == 'q' {
-				return
-			}
-			if event.Key() == tcell.KeyUp {
-				ClearCursorPosition(screen, cursor)
-				cursor = UpdateCursorPosition(screen, cursor, 0, -1)
-				DrawCursorPosition(screen, cursor)
-			}
-			if event.Key() == tcell.KeyDown {
-				ClearCursorPosition(screen, cursor)
-				cursor = UpdateCursorPosition(screen, cursor, 0, 1)
-				DrawCursorPosition(screen, cursor)
-			}
-			if event.Key() == tcell.KeyLeft {
-				ClearCursorPosition(screen, cursor)
-				cursor = UpdateCursorPosition(screen, cursor, -1, 0)
-				DrawCursorPosition(screen, cursor)
-			}
-			if event.Key() == tcell.KeyRight {
-				ClearCursorPosition(screen, cursor)
-				cursor = UpdateCursorPosition(screen, cursor, 1, 0)
-				DrawCursorPosition(screen, cursor)
-			}
-
-			screen.Flush()
+func KillMiddleware(ctx *gui.Context, eventType tcell.Event) {
+	switch event := eventType.(type) {
+	case *tcell.EventKey:
+		if event.Key() == tcell.KeyEscape || event.Rune() == 'q' {
+			ctx.Abort()
+			ctx.Kill()
 		}
 	}
 }
 
-// func Tick(screen gui.Screen) {
-// 	ticker := time.Tick(10 * time.Millisecond)
-// 	for range ticker {
-// 		x, y := generatePosition()
-// 		placeDot(screen, x, y)
-// 		screen.Flush()
-// 	}
-// }
+func NoStateHandler(ctx *gui.Context, eventType tcell.Event) {
+	switch event := eventType.(type) {
+	case *tcell.EventKey:
+		if event.Key() == tcell.KeyUp {
+			ClearCursorPosition(ctx, cursor)
+			cursor = UpdateCursorPosition(ctx, cursor, 0, -1)
+			DrawCursorPosition(ctx, cursor)
+		}
+		if event.Key() == tcell.KeyDown {
+			ClearCursorPosition(ctx, cursor)
+			cursor = UpdateCursorPosition(ctx, cursor, 0, 1)
+			DrawCursorPosition(ctx, cursor)
+		}
+		if event.Key() == tcell.KeyLeft {
+			ClearCursorPosition(ctx, cursor)
+			cursor = UpdateCursorPosition(ctx, cursor, -1, 0)
+			DrawCursorPosition(ctx, cursor)
+		}
+		if event.Key() == tcell.KeyRight {
+			ClearCursorPosition(ctx, cursor)
+			cursor = UpdateCursorPosition(ctx, cursor, 1, 0)
+			DrawCursorPosition(ctx, cursor)
+		}
 
-// func generatePosition() (int, int) {
-// 	x := rand.IntN(190)
-// 	y := rand.IntN(45)
-
-// 	return x, y
-// }
-
-// func placeDot(screen gui.Screen, x, y int) {
-// 	screen.SetContent(x, y, '.', nil, tcell.StyleDefault)
-// }
-
-func ClearCursorPosition(screen *gui.Screen, cursor Cursor) {
-	screen.SetContent(cursor.X, cursor.Y, ' ', nil, tcell.StyleDefault)
+		ctx.Flush()
+	}
 }
 
-func DrawCursorPosition(screen *gui.Screen, cursor Cursor) {
-	screen.SetContent(cursor.X, cursor.Y, cursor.Symbol, nil, cursor.SymbolStyle)
+func ClearCursorPosition(ctx *gui.Context, cursor Cursor) {
+	ctx.SetContent(cursor.X, cursor.Y, ' ', nil, tcell.StyleDefault)
 }
 
-func UpdateCursorPosition(screen *gui.Screen, cursor Cursor, xOffset, yOffset int) Cursor {
-	screenX, screenY := screen.Size()
+func DrawCursorPosition(ctx *gui.Context, cursor Cursor) {
+	ctx.SetContent(cursor.X, cursor.Y, cursor.Symbol, nil, cursor.SymbolStyle)
+}
+
+func UpdateCursorPosition(ctx *gui.Context, cursor Cursor, xOffset, yOffset int) Cursor {
+	screenX, screenY := ctx.Size()
 
 	cursor.X += xOffset
 	cursor.Y += yOffset

@@ -1,33 +1,89 @@
 package gui
 
-import "github.com/gdamore/tcell/v2"
+import (
+	"sync"
+
+	"github.com/gdamore/tcell/v2"
+)
 
 type (
 	Screen struct {
-		tcellScreen tcell.Screen
-
 		context *Context
+
+		initHandler InitHandler
+		handlers    map[State][]Handler
+
+		handlersMutex sync.RWMutex
 	}
 )
 
 func NewScreen() (*Screen, error) {
-	tcellScreen, err := tcell.NewScreen()
+	context, err := newContext()
 	if err != nil {
 		return nil, err
 	}
 
 	screen := Screen{
-		tcellScreen: tcellScreen,
-		context:     newContext(),
+		context:     context,
+		initHandler: emptyInitHandler,
+		handlers:    make(map[State][]Handler),
 	}
 
 	return &screen, nil
 }
 
+func (s *Screen) BindInitHandler(handler InitHandler) {
+	s.handlersMutex.Lock()
+	s.initHandler = handler
+	s.handlersMutex.Unlock()
+}
+
+func (s *Screen) BindHandlers(state State, handlers ...Handler) {
+	s.handlersMutex.Lock()
+	s.handlers[state] = handlers
+	s.handlersMutex.Unlock()
+}
+
+func (s *Screen) Run() {
+	s.initHandler(s.context)
+
+	eventChannel := make(chan tcell.Event)
+	quitChannel := make(chan struct{})
+
+	go s.context.tcellScreen.ChannelEvents(eventChannel, quitChannel)
+
+RunLoop:
+	for {
+		select {
+		case <-s.context.killChannel:
+			break RunLoop
+		case <-quitChannel:
+			break RunLoop
+		case event := <-eventChannel:
+
+			currentState := s.context.getCurrentState()
+
+			handlers := s.getHandlers(currentState)
+			childContext := s.context.newChildContext()
+
+			childContext.resetData(childContext)
+
+			for handlerIndex := childContext.getHandlerIndex(); handlerIndex < len(handlers); handlerIndex = childContext.getHandlerIndex() {
+				handlers[handlerIndex](childContext, event)
+				childContext.addHandlerIndex()
+			}
+
+			childContext.Cancel()
+		}
+	}
+
+	s.context.Cancel()
+}
+
 // init
 
 func (s *Screen) Init() error {
-	err := s.tcellScreen.Init()
+	err := s.context.tcellScreen.Init()
 	if err != nil {
 		return err
 	}
@@ -36,51 +92,13 @@ func (s *Screen) Init() error {
 }
 
 func (s *Screen) Close() {
-	s.tcellScreen.Fini()
-}
-
-func (s *Screen) PollEvent() tcell.Event {
-	event := s.tcellScreen.PollEvent()
-
-	return event
-}
-
-// draw
-
-func (s *Screen) SetContent(x, y int, symbol rune, combining []rune, style tcell.Style) {
-	s.tcellScreen.SetContent(x, y, symbol, combining, style)
-}
-
-func (s *Screen) GetContent(x, y int) (rune, []rune, tcell.Style, int) {
-	symbol, combining, style, width := s.tcellScreen.GetContent(x, y)
-
-	return symbol, combining, style, width
-}
-
-func (s *Screen) Flush() {
-	s.tcellScreen.Show()
-}
-
-func (s *Screen) Fill(symbol rune, style tcell.Style) {
-	s.tcellScreen.Fill(symbol, style)
-}
-
-func (s *Screen) Clear() {
-	s.tcellScreen.Clear()
+	s.context.tcellScreen.Fini()
 }
 
 // util
 
-func (s *Screen) HideCursor() {
-	s.tcellScreen.HideCursor()
-}
+func (s *Screen) getHandlers(state State) []Handler {
+	handlers := s.handlers[state]
 
-func (s *Screen) ShowCursor(x, y int) {
-	s.tcellScreen.ShowCursor(x, y)
-}
-
-func (s *Screen) Size() (int, int) {
-	screenX, screenY := s.tcellScreen.Size()
-
-	return screenX, screenY
+	return handlers
 }
