@@ -11,38 +11,48 @@ import (
 
 type (
 	Context struct {
-		tcellScreen tcell.Screen
+		cells       *[][]cell
+		viewOffsetX int
+		viewOffsetY int
+		defaultCell cell
 
 		stateIndex int
 		states     []State
 
 		handlerIndex int
 
-		context    context.Context
-		cancelFunc context.CancelFunc
+		tcellScreen tcell.Screen
 
 		killChannel chan struct{}
+
+		context    context.Context
+		cancelFunc context.CancelFunc
 
 		mutex sync.RWMutex
 	}
 )
 
 func newContext() (*Context, error) {
+	initCells := new([][]cell)
+
+	initStates := []State{NoState}
+
 	tcellScreen, err := tcell.NewScreen()
 	if err != nil {
 		return nil, err
 	}
 
+	killChannel := make(chan struct{})
+
 	context, cancelFunc := context.WithCancel(context.Background())
 
-	initStates := []State{NoState}
-
 	ctx := Context{
-		tcellScreen: tcellScreen,
+		cells:       initCells,
 		states:      initStates,
+		tcellScreen: tcellScreen,
+		killChannel: killChannel,
 		context:     context,
 		cancelFunc:  cancelFunc,
-		killChannel: make(chan struct{}, 1),
 	}
 
 	return &ctx, nil
@@ -51,18 +61,49 @@ func newContext() (*Context, error) {
 func (ctx *Context) newChildContext() *Context {
 	context, cancelFunc := context.WithCancel(ctx)
 	return &Context{
-		tcellScreen: ctx.tcellScreen,
+		cells:       ctx.cells,
 		states:      ctx.states,
+		tcellScreen: ctx.tcellScreen,
+		killChannel: ctx.killChannel,
 		context:     context,
 		cancelFunc:  cancelFunc,
-		killChannel: ctx.killChannel,
 	}
 }
 
 // draw
 
 func (ctx *Context) SetContent(x, y int, symbol rune, combining []rune, style tcell.Style) {
-	ctx.tcellScreen.SetContent(x, y, symbol, combining, style)
+	ctx.setLocalContent(x, y, symbol, combining, style)
+	ctx.tcellScreen.SetContent(x-ctx.viewOffsetX, y-ctx.viewOffsetY, symbol, combining, style)
+}
+
+func (ctx *Context) setLocalContent(x, y int, symbol rune, combining []rune, style tcell.Style) {
+	cells := *ctx.cells
+
+	rowsCount := len(cells) - 1
+	if y > rowsCount {
+		cells = growSlice(cells, y+1)
+		newRows := y - rowsCount
+		for range newRows {
+			cells = append(cells, []cell{})
+		}
+	}
+	columnsCount := len(cells[y]) - 1
+	if x > columnsCount {
+		cells[y] = growSlice(cells[y], x+1)
+		newColumns := x - columnsCount
+		for range newColumns {
+			cells[y] = append(cells[y], ctx.defaultCell)
+		}
+	}
+
+	cell := cells[y][x]
+	cell.symbol = symbol
+	cell.combining = combining
+	cell.style = style
+	cells[y][x] = cell
+
+	*ctx.cells = cells
 }
 
 func (ctx *Context) GetContent(x, y int) (rune, []rune, tcell.Style, int) {

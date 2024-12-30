@@ -8,40 +8,43 @@ import (
 
 type (
 	Screen struct {
-		context *Context
-
 		initHandler InitHandler
 		handlers    map[State][]Handler
 
-		handlersMutex sync.RWMutex
+		context *Context
+
+		mutex sync.RWMutex
 	}
 )
 
 func NewScreen() (*Screen, error) {
+	initHandler := emptyInitHandler
+	handlers := make(map[State][]Handler)
+
 	context, err := newContext()
 	if err != nil {
 		return nil, err
 	}
 
 	screen := Screen{
+		initHandler: initHandler,
+		handlers:    handlers,
 		context:     context,
-		initHandler: emptyInitHandler,
-		handlers:    make(map[State][]Handler),
 	}
 
 	return &screen, nil
 }
 
 func (s *Screen) BindInitHandler(handler InitHandler) {
-	s.handlersMutex.Lock()
+	s.mutex.Lock()
 	s.initHandler = handler
-	s.handlersMutex.Unlock()
+	s.mutex.Unlock()
 }
 
 func (s *Screen) BindHandlers(state State, handlers ...Handler) {
-	s.handlersMutex.Lock()
+	s.mutex.Lock()
 	s.handlers[state] = handlers
-	s.handlersMutex.Unlock()
+	s.mutex.Unlock()
 }
 
 func (s *Screen) Run() {
@@ -60,24 +63,27 @@ RunLoop:
 		case <-quitChannel:
 			break RunLoop
 		case event := <-eventChannel:
-
-			currentState := s.context.getCurrentState()
-
-			handlers := s.getHandlers(currentState)
-			childContext := s.context.newChildContext()
-
-			childContext.resetData(childContext)
-
-			for handlerIndex := childContext.getHandlerIndex(); handlerIndex < len(handlers); handlerIndex = childContext.getHandlerIndex() {
-				handlers[handlerIndex](childContext, event)
-				childContext.addHandlerIndex()
-			}
-
-			childContext.Cancel()
+			go s.handleEvent(event)
 		}
 	}
 
 	s.context.Cancel()
+}
+
+func (s *Screen) handleEvent(event tcell.Event) {
+	currentState := s.context.getCurrentState()
+
+	handlers := s.getHandlers(currentState)
+	childContext := s.context.newChildContext()
+
+	childContext.resetData(childContext)
+
+	for handlerIndex := childContext.getHandlerIndex(); handlerIndex < len(handlers); handlerIndex = childContext.getHandlerIndex() {
+		handlers[handlerIndex](childContext, event)
+		childContext.addHandlerIndex()
+	}
+
+	childContext.Cancel()
 }
 
 // init

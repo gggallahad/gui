@@ -48,6 +48,8 @@ func main() {
 
 func InitHandler(ctx *gui.Context) {
 	ctx.Clear()
+	DrawCursorPosition(ctx, cursor)
+	ctx.Flush()
 }
 
 func KillMiddleware(ctx *gui.Context, eventType tcell.Event) {
