@@ -34,6 +34,7 @@ type (
 
 func newContext() (*Context, error) {
 	initCells := new([][]cell)
+	initDefaultCell := defaultCell
 
 	initStates := []State{NoState}
 
@@ -48,6 +49,7 @@ func newContext() (*Context, error) {
 
 	ctx := Context{
 		cells:       initCells,
+		defaultCell: initDefaultCell,
 		states:      initStates,
 		tcellScreen: tcellScreen,
 		killChannel: killChannel,
@@ -62,6 +64,7 @@ func (ctx *Context) newChildContext() *Context {
 	context, cancelFunc := context.WithCancel(ctx)
 	return &Context{
 		cells:       ctx.cells,
+		defaultCell: ctx.defaultCell,
 		states:      ctx.states,
 		tcellScreen: ctx.tcellScreen,
 		killChannel: ctx.killChannel,

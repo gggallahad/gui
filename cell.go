@@ -9,3 +9,9 @@ type (
 		style     tcell.Style
 	}
 )
+
+var defaultCell cell = cell{
+	symbol:    ' ',
+	combining: nil,
+	style:     tcell.StyleDefault,
+}
