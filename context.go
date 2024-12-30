@@ -62,7 +62,8 @@ func newContext() (*Context, error) {
 
 func (ctx *Context) newChildContext() *Context {
 	context, cancelFunc := context.WithCancel(ctx)
-	return &Context{
+
+	childContext := Context{
 		cells:       ctx.cells,
 		defaultCell: ctx.defaultCell,
 		states:      ctx.states,
@@ -71,6 +72,8 @@ func (ctx *Context) newChildContext() *Context {
 		context:     context,
 		cancelFunc:  cancelFunc,
 	}
+
+	return &childContext
 }
 
 // draw
