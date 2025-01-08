@@ -1,13 +1,13 @@
 package gui
 
-import "github.com/gdamore/tcell/v2"
+import "github.com/nsf/termbox-go"
 
 type (
 	InitHandler func(*Context)
-	Handler     func(*Context, tcell.Event)
+	Handler     func(*Context, termbox.Event)
 )
 
 var (
-	emptyInitHandler InitHandler = func(ctx *Context) {}
-	emptyHandler     Handler     = func(ctx *Context, e tcell.Event) {}
+	emptyInitHandler InitHandler = func(*Context) {}
+	emptyHandler     Handler     = func(*Context, termbox.Event) {}
 )

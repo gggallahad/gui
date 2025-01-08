@@ -1,7 +1,7 @@
 package gui
 
 type (
-	State uint64
+	State int
 )
 
 const (

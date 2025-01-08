@@ -3,25 +3,35 @@ package main
 import (
 	"log"
 
-	"github.com/gdamore/tcell/v2"
 	"github.com/gggallahad/gui"
+	"github.com/nsf/termbox-go"
 )
 
 type (
 	Cursor struct {
-		Symbol      rune
-		SymbolStyle tcell.Style
-		X           int
-		Y           int
+		Cell gui.Cell
+		X    int
+		Y    int
 	}
 )
 
 var (
 	cursor Cursor = Cursor{
-		Symbol:      '?',
-		SymbolStyle: tcell.Style.Foreground(tcell.StyleDefault, tcell.ColorRed),
-		X:           5,
-		Y:           5,
+		Cell: gui.Cell{
+			Symbol: '?',
+			Foreground: gui.Color{
+				R: 255,
+				G: 0,
+				B: 0,
+			},
+			Background: gui.Color{
+				R: -1,
+				G: -1,
+				B: -1,
+			},
+		},
+		X: 5,
+		Y: 5,
 	}
 )
 
@@ -47,40 +57,44 @@ func main() {
 }
 
 func InitHandler(ctx *gui.Context) {
-	ctx.Clear()
+	err := ctx.Clear()
+	if err != nil {
+		return
+	}
+
 	DrawCursorPosition(ctx, cursor)
 	ctx.Flush()
 }
 
-func KillMiddleware(ctx *gui.Context, eventType tcell.Event) {
-	switch event := eventType.(type) {
-	case *tcell.EventKey:
-		if event.Key() == tcell.KeyEscape || event.Rune() == 'q' {
+func KillMiddleware(ctx *gui.Context, event termbox.Event) {
+	switch event.Type {
+	case termbox.EventKey:
+		if event.Key == termbox.KeyEsc || event.Ch == 'q' {
 			ctx.Abort()
 			ctx.Kill()
 		}
 	}
 }
 
-func NoStateHandler(ctx *gui.Context, eventType tcell.Event) {
-	switch event := eventType.(type) {
-	case *tcell.EventKey:
-		if event.Key() == tcell.KeyUp {
+func NoStateHandler(ctx *gui.Context, event termbox.Event) {
+	switch event.Type {
+	case termbox.EventKey:
+		if event.Ch == 'w' {
 			ClearCursorPosition(ctx, cursor)
 			cursor = UpdateCursorPosition(ctx, cursor, 0, -1)
 			DrawCursorPosition(ctx, cursor)
 		}
-		if event.Key() == tcell.KeyDown {
+		if event.Ch == 's' {
 			ClearCursorPosition(ctx, cursor)
 			cursor = UpdateCursorPosition(ctx, cursor, 0, 1)
 			DrawCursorPosition(ctx, cursor)
 		}
-		if event.Key() == tcell.KeyLeft {
+		if event.Ch == 'a' {
 			ClearCursorPosition(ctx, cursor)
 			cursor = UpdateCursorPosition(ctx, cursor, -1, 0)
 			DrawCursorPosition(ctx, cursor)
 		}
-		if event.Key() == tcell.KeyRight {
+		if event.Ch == 'd' {
 			ClearCursorPosition(ctx, cursor)
 			cursor = UpdateCursorPosition(ctx, cursor, 1, 0)
 			DrawCursorPosition(ctx, cursor)
@@ -91,11 +105,11 @@ func NoStateHandler(ctx *gui.Context, eventType tcell.Event) {
 }
 
 func ClearCursorPosition(ctx *gui.Context, cursor Cursor) {
-	ctx.SetContent(cursor.X, cursor.Y, ' ', nil, tcell.StyleDefault)
+	ctx.SetCell(cursor.X, cursor.Y, gui.DefaultCell)
 }
 
 func DrawCursorPosition(ctx *gui.Context, cursor Cursor) {
-	ctx.SetContent(cursor.X, cursor.Y, cursor.Symbol, nil, cursor.SymbolStyle)
+	ctx.SetCell(cursor.X, cursor.Y, cursor.Cell)
 }
 
 func UpdateCursorPosition(ctx *gui.Context, cursor Cursor, xOffset, yOffset int) Cursor {

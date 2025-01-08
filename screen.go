@@ -3,7 +3,7 @@ package gui
 import (
 	"sync"
 
-	"github.com/gdamore/tcell/v2"
+	"github.com/nsf/termbox-go"
 )
 
 type (
@@ -50,17 +50,14 @@ func (s *Screen) BindHandlers(state State, handlers ...Handler) {
 func (s *Screen) Run() {
 	s.initHandler(s.context)
 
-	eventChannel := make(chan tcell.Event)
-	quitChannel := make(chan struct{})
+	eventChannel := make(chan termbox.Event)
 
-	go s.context.tcellScreen.ChannelEvents(eventChannel, quitChannel)
+	go s.getEvents(eventChannel)
 
 RunLoop:
 	for {
 		select {
 		case <-s.context.killChannel:
-			break RunLoop
-		case <-quitChannel:
 			break RunLoop
 		case event := <-eventChannel:
 			go s.handleEvent(event)
@@ -70,7 +67,14 @@ RunLoop:
 	s.context.Cancel()
 }
 
-func (s *Screen) handleEvent(event tcell.Event) {
+func (s *Screen) getEvents(eventChannel chan<- termbox.Event) {
+	for {
+		event := termbox.PollEvent()
+		eventChannel <- event
+	}
+}
+
+func (s *Screen) handleEvent(event termbox.Event) {
 	currentState := s.context.getCurrentState()
 
 	handlers := s.getHandlers(currentState)
@@ -89,16 +93,18 @@ func (s *Screen) handleEvent(event tcell.Event) {
 // init
 
 func (s *Screen) Init() error {
-	err := s.context.tcellScreen.Init()
+	err := termbox.Init()
 	if err != nil {
 		return err
 	}
+
+	termbox.SetOutputMode(termbox.OutputRGB)
 
 	return nil
 }
 
 func (s *Screen) Close() {
-	s.context.tcellScreen.Fini()
+	termbox.Close()
 }
 
 // util

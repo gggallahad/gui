@@ -6,71 +6,86 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gdamore/tcell/v2"
+	"github.com/nsf/termbox-go"
 )
 
 type (
 	Context struct {
-		cells       *[][]cell
-		viewOffsetX int
-		viewOffsetY int
-		defaultCell cell
+		cells       *[][]Cell
+		defaultCell *Cell
 
-		stateIndex int
-		states     []State
+		viewPositionX *int
+		viewPositionY *int
 
-		handlerIndex int
+		viewSizeX *int
+		viewSizeY *int
 
-		tcellScreen tcell.Screen
+		stateIndex *int
+		states     *[]State
 
 		killChannel chan struct{}
 
-		context    context.Context
-		cancelFunc context.CancelFunc
+		handlerIndex int
+		context      context.Context
+		cancelFunc   context.CancelFunc
 
 		mutex sync.RWMutex
 	}
 )
 
 func newContext() (*Context, error) {
-	initCells := new([][]cell)
-	initDefaultCell := defaultCell
+	cells := make([][]Cell, 0)
+	defaultCell := DefaultCell
 
-	initStates := []State{NoState}
+	viewPositionX := 0
+	viewPositionY := 0
 
-	tcellScreen, err := tcell.NewScreen()
-	if err != nil {
-		return nil, err
-	}
+	viewSizeX := 0
+	viewSizeY := 0
+
+	stateIndex := 0
+	states := []State{NoState}
 
 	killChannel := make(chan struct{})
 
+	handlerIndex := 0
 	context, cancelFunc := context.WithCancel(context.Background())
 
 	ctx := Context{
-		cells:       initCells,
-		defaultCell: initDefaultCell,
-		states:      initStates,
-		tcellScreen: tcellScreen,
-		killChannel: killChannel,
-		context:     context,
-		cancelFunc:  cancelFunc,
+		cells:         &cells,
+		defaultCell:   &defaultCell,
+		viewPositionX: &viewPositionX,
+		viewPositionY: &viewPositionY,
+		viewSizeX:     &viewSizeX,
+		viewSizeY:     &viewSizeY,
+		stateIndex:    &stateIndex,
+		states:        &states,
+		killChannel:   killChannel,
+		handlerIndex:  handlerIndex,
+		context:       context,
+		cancelFunc:    cancelFunc,
 	}
 
 	return &ctx, nil
 }
 
 func (ctx *Context) newChildContext() *Context {
+	handlerIndex := 0
 	context, cancelFunc := context.WithCancel(ctx)
 
 	childContext := Context{
-		cells:       ctx.cells,
-		defaultCell: ctx.defaultCell,
-		states:      ctx.states,
-		tcellScreen: ctx.tcellScreen,
-		killChannel: ctx.killChannel,
-		context:     context,
-		cancelFunc:  cancelFunc,
+		cells:         ctx.cells,
+		defaultCell:   ctx.defaultCell,
+		viewPositionX: ctx.viewPositionX,
+		viewPositionY: ctx.viewPositionY,
+		viewSizeX:     ctx.viewSizeX,
+		viewSizeY:     ctx.viewSizeY,
+		stateIndex:    ctx.stateIndex,
+		states:        ctx.states,
+		killChannel:   ctx.killChannel,
+		handlerIndex:  handlerIndex,
+		context:       context,
+		cancelFunc:    cancelFunc,
 	}
 
 	return &childContext
@@ -78,72 +93,123 @@ func (ctx *Context) newChildContext() *Context {
 
 // draw
 
-func (ctx *Context) SetContent(x, y int, symbol rune, combining []rune, style tcell.Style) {
-	ctx.setLocalContent(x, y, symbol, combining, style)
-	ctx.tcellScreen.SetContent(x-ctx.viewOffsetX, y-ctx.viewOffsetY, symbol, combining, style)
+func (ctx *Context) UpdateView(viewPositionOffsetX, viewPositionOffsetY int) {
+	*ctx.viewPositionX += viewPositionOffsetX
+	*ctx.viewPositionY += viewPositionOffsetY
+
+	if *ctx.viewPositionX < 0 {
+		*ctx.viewPositionX = 0
+	}
+	if *ctx.viewPositionY < 0 {
+		*ctx.viewPositionY = 0
+	}
 }
 
-func (ctx *Context) setLocalContent(x, y int, symbol rune, combining []rune, style tcell.Style) {
-	cells := *ctx.cells
+func (ctx *Context) SetView(viewPositionX, viewPositionY int) {
+	*ctx.viewPositionX = viewPositionX
+	*ctx.viewPositionY = viewPositionY
 
-	rowsCount := len(cells) - 1
-	if y > rowsCount {
-		cells = growSlice(cells, y+1)
-		newRows := y - rowsCount
+	if *ctx.viewPositionX < 0 {
+		*ctx.viewPositionX = 0
+	}
+	if *ctx.viewPositionY < 0 {
+		*ctx.viewPositionY = 0
+	}
+}
+
+// func (ctx *Context) UpdateViewContent() {
+// 	if ctx.viewPositionY < len(*ctx.cells) {
+// 		for row := range *ctx.cells {
+// 			if ctx.viewPositionX < len(*ctx.cells[row]) {
+
+// 			}
+// 		}
+// 	}
+// }
+
+func (ctx *Context) SetCell(x, y int, cell Cell) {
+	ctx.setLocalCell(x, y, cell)
+
+	foregroundAttribute := cell.Foreground.toAttribute()
+	backgroundAttribute := cell.Background.toAttribute()
+
+	termbox.SetCell(x-*ctx.viewPositionX, y-*ctx.viewPositionY, cell.Symbol, foregroundAttribute, backgroundAttribute)
+}
+
+func (ctx *Context) setLocalCell(x, y int, cell Cell) {
+	rowsMaxIndex := len(*ctx.cells) - 1
+	if y > rowsMaxIndex {
+		*ctx.cells = growSlice(*ctx.cells, y+1)
+		newRows := y - rowsMaxIndex
 		for range newRows {
-			cells = append(cells, []cell{})
+			*ctx.cells = append(*ctx.cells, []Cell{})
 		}
 	}
-	columnsCount := len(cells[y]) - 1
-	if x > columnsCount {
-		cells[y] = growSlice(cells[y], x+1)
-		newColumns := x - columnsCount
+
+	columnsMaxIndex := len((*ctx.cells)[y]) - 1
+	if x > columnsMaxIndex {
+		(*ctx.cells)[y] = growSlice((*ctx.cells)[y], x+1)
+		newColumns := x - columnsMaxIndex
 		for range newColumns {
-			cells[y] = append(cells[y], ctx.defaultCell)
+			(*ctx.cells)[y] = append((*ctx.cells)[y], *ctx.defaultCell)
 		}
 	}
 
-	cell := cells[y][x]
-	cell.symbol = symbol
-	cell.combining = combining
-	cell.style = style
-	cells[y][x] = cell
-
-	*ctx.cells = cells
+	(*ctx.cells)[y][x] = cell
 }
 
-func (ctx *Context) GetContent(x, y int) (rune, []rune, tcell.Style, int) {
-	symbol, combining, style, width := ctx.tcellScreen.GetContent(x, y)
+func (ctx *Context) GetContent(x, y int) Cell {
+	if y < len(*ctx.cells)-1 || x < len((*ctx.cells)[y]) {
+		return *ctx.defaultCell
+	}
 
-	return symbol, combining, style, width
+	return (*ctx.cells)[y][x]
 }
 
-func (ctx *Context) Flush() {
-	ctx.tcellScreen.Show()
+func (ctx *Context) Flush() error {
+	err := termbox.Flush()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (ctx *Context) Fill(symbol rune, style tcell.Style) {
-	ctx.tcellScreen.Fill(symbol, style)
+func (ctx *Context) ClearWithColor(foreground, background Color) error {
+	foregroundAttribute := foreground.toAttribute()
+	backgroundAttribute := foreground.toAttribute()
+
+	err := termbox.Clear(foregroundAttribute, backgroundAttribute)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (ctx *Context) Clear() {
-	ctx.tcellScreen.Clear()
+func (ctx *Context) Clear() error {
+	err := termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // user util
 
 func (ctx *Context) HideCursor() {
-	ctx.tcellScreen.HideCursor()
+	termbox.HideCursor()
 }
 
 func (ctx *Context) ShowCursor(x, y int) {
-	ctx.tcellScreen.ShowCursor(x, y)
+	termbox.SetCursor(x, y)
 }
 
 func (ctx *Context) Size() (int, int) {
-	screenX, screenY := ctx.tcellScreen.Size()
+	x, y := termbox.Size()
 
-	return screenX, screenY
+	return x, y
 }
 
 func (ctx *Context) Kill() {
@@ -165,7 +231,7 @@ func (ctx *Context) Abort() {
 func (ctx *Context) getCurrentState() State {
 	ctx.mutex.RLock()
 
-	state := ctx.states[ctx.stateIndex]
+	state := (*ctx.states)[*ctx.stateIndex]
 
 	ctx.mutex.RUnlock()
 
