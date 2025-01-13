@@ -114,9 +114,7 @@ func (ctx *Context) UpdateViewContent() error {
 	for rowIndex := *ctx.viewPositionY; rowIndex < len(*ctx.cells); rowIndex++ {
 		for columnIndex := *ctx.viewPositionX; columnIndex < len((*ctx.cells)[rowIndex]); columnIndex++ {
 			cell := (*ctx.cells)[rowIndex][columnIndex]
-			positionWithViewOffsetX := columnIndex - *ctx.viewPositionX
-			positionWithViewOffsetY := rowIndex - *ctx.viewPositionY
-			ctx.setTermboxCell(positionWithViewOffsetX, positionWithViewOffsetY, cell)
+			ctx.setTermboxCell(columnIndex, rowIndex, cell)
 		}
 	}
 
@@ -152,6 +150,9 @@ func (ctx *Context) setlocalCell(x, y int, cell Cell) {
 }
 
 func (ctx *Context) setTermboxCell(x, y int, cell Cell) {
+	x -= *ctx.viewPositionX
+	y -= *ctx.viewPositionY
+
 	foregroundAttribute := cell.Foreground.toAttribute()
 	backgroundAttribute := cell.Background.toAttribute()
 

@@ -106,30 +106,30 @@ func NoStateHandler(ctx *gui.Context, event termbox.Event) {
 			MoveCursor(ctx, 1, 0)
 		}
 
-		// if event.Key == termbox.KeyArrowUp {
-		// 	err := MoveCamera(ctx, 0, -1)
-		// 	if err != nil {
-		// 		return
-		// 	}
-		// }
-		// if event.Key == termbox.KeyArrowDown {
-		// 	err := MoveCamera(ctx, 0, 1)
-		// 	if err != nil {
-		// 		return
-		// 	}
-		// }
-		// if event.Key == termbox.KeyArrowLeft {
-		// 	err := MoveCamera(ctx, -1, 0)
-		// 	if err != nil {
-		// 		return
-		// 	}
-		// }
-		// if event.Key == termbox.KeyArrowRight {
-		// 	err := MoveCamera(ctx, 1, 0)
-		// 	if err != nil {
-		// 		return
-		// 	}
-		// }
+		if event.Key == termbox.KeyArrowUp {
+			err := MoveCamera(ctx, 0, -1)
+			if err != nil {
+				return
+			}
+		}
+		if event.Key == termbox.KeyArrowDown {
+			err := MoveCamera(ctx, 0, 1)
+			if err != nil {
+				return
+			}
+		}
+		if event.Key == termbox.KeyArrowLeft {
+			err := MoveCamera(ctx, -1, 0)
+			if err != nil {
+				return
+			}
+		}
+		if event.Key == termbox.KeyArrowRight {
+			err := MoveCamera(ctx, 1, 0)
+			if err != nil {
+				return
+			}
+		}
 
 		ctx.Flush()
 	}
@@ -142,11 +142,11 @@ func MoveCursor(ctx *gui.Context, cursorPositionOffsetX, cursorPositionOffsetY i
 }
 
 func clearCursorPosition(ctx *gui.Context) {
-	ctx.SetCell(cursor.X-view.X, cursor.Y-view.Y, gui.DefaultCell)
+	ctx.SetCell(cursor.X, cursor.Y, gui.DefaultCell)
 }
 
 func drawCursorPosition(ctx *gui.Context) {
-	ctx.SetCell(cursor.X-view.X, cursor.Y-view.Y, cursor.Cell)
+	ctx.SetCell(cursor.X, cursor.Y, cursor.Cell)
 }
 
 func updateCursorPosition(cursorPositionOffsetX, cursorPositionOffsetY int) {
@@ -162,34 +162,34 @@ func updateCursorPosition(cursorPositionOffsetX, cursorPositionOffsetY int) {
 	}
 }
 
-// func MoveCamera(ctx *gui.Context, viewPositionOffsetX, viewPositionOffsetY int) error {
-// 	updateViewPosition(viewPositionOffsetX, viewPositionOffsetY)
-// 	err := updateViewContent(ctx)
-// 	if err != nil {
-// 		return err
-// 	}
+func MoveCamera(ctx *gui.Context, viewPositionOffsetX, viewPositionOffsetY int) error {
+	updateViewPosition(viewPositionOffsetX, viewPositionOffsetY)
+	err := updateViewContent(ctx)
+	if err != nil {
+		return err
+	}
 
-// 	return nil
-// }
+	return nil
+}
 
-// func updateViewPosition(viewPositionOffsetX, viewPositionOffsetY int) {
-// 	view.X += viewPositionOffsetX
-// 	view.Y += viewPositionOffsetY
+func updateViewPosition(viewPositionOffsetX, viewPositionOffsetY int) {
+	view.X += viewPositionOffsetX
+	view.Y += viewPositionOffsetY
 
-// 	if view.X < 0 {
-// 		view.X = 0
-// 	}
-// 	if view.Y < 0 {
-// 		view.Y = 0
-// 	}
-// }
+	if view.X < 0 {
+		view.X = 0
+	}
+	if view.Y < 0 {
+		view.Y = 0
+	}
+}
 
-// func updateViewContent(ctx *gui.Context) error {
-// 	ctx.SetViewPosition(view.X, view.Y)
-// 	err := ctx.UpdateViewContent()
-// 	if err != nil {
-// 		return err
-// 	}
+func updateViewContent(ctx *gui.Context) error {
+	ctx.SetViewPosition(view.X, view.Y)
+	err := ctx.UpdateViewContent()
+	if err != nil {
+		return err
+	}
 
-// 	return nil
-// }
+	return nil
+}
