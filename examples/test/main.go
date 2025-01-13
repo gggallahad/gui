@@ -9,14 +9,21 @@ import (
 
 type (
 	Cursor struct {
-		Cell gui.Cell
 		X    int
 		Y    int
+		Cell gui.Cell
+	}
+
+	View struct {
+		X int
+		Y int
 	}
 )
 
 var (
 	cursor Cursor = Cursor{
+		X: 5,
+		Y: 5,
 		Cell: gui.Cell{
 			Symbol: '?',
 			Foreground: gui.Color{
@@ -30,8 +37,11 @@ var (
 				B: -1,
 			},
 		},
-		X: 5,
-		Y: 5,
+	}
+
+	view View = View{
+		X: 0,
+		Y: 0,
 	}
 )
 
@@ -62,8 +72,12 @@ func InitHandler(ctx *gui.Context) {
 		return
 	}
 
-	DrawCursorPosition(ctx, cursor)
-	ctx.Flush()
+	drawCursorPosition(ctx)
+
+	err = ctx.Flush()
+	if err != nil {
+		return
+	}
 }
 
 func KillMiddleware(ctx *gui.Context, event termbox.Event) {
@@ -80,59 +94,102 @@ func NoStateHandler(ctx *gui.Context, event termbox.Event) {
 	switch event.Type {
 	case termbox.EventKey:
 		if event.Ch == 'w' {
-			ClearCursorPosition(ctx, cursor)
-			cursor = UpdateCursorPosition(ctx, cursor, 0, -1)
-			DrawCursorPosition(ctx, cursor)
+			MoveCursor(ctx, 0, -1)
 		}
 		if event.Ch == 's' {
-			ClearCursorPosition(ctx, cursor)
-			cursor = UpdateCursorPosition(ctx, cursor, 0, 1)
-			DrawCursorPosition(ctx, cursor)
+			MoveCursor(ctx, 0, 1)
 		}
 		if event.Ch == 'a' {
-			ClearCursorPosition(ctx, cursor)
-			cursor = UpdateCursorPosition(ctx, cursor, -1, 0)
-			DrawCursorPosition(ctx, cursor)
+			MoveCursor(ctx, -1, 0)
 		}
 		if event.Ch == 'd' {
-			ClearCursorPosition(ctx, cursor)
-			cursor = UpdateCursorPosition(ctx, cursor, 1, 0)
-			DrawCursorPosition(ctx, cursor)
+			MoveCursor(ctx, 1, 0)
 		}
+
+		// if event.Key == termbox.KeyArrowUp {
+		// 	err := MoveCamera(ctx, 0, -1)
+		// 	if err != nil {
+		// 		return
+		// 	}
+		// }
+		// if event.Key == termbox.KeyArrowDown {
+		// 	err := MoveCamera(ctx, 0, 1)
+		// 	if err != nil {
+		// 		return
+		// 	}
+		// }
+		// if event.Key == termbox.KeyArrowLeft {
+		// 	err := MoveCamera(ctx, -1, 0)
+		// 	if err != nil {
+		// 		return
+		// 	}
+		// }
+		// if event.Key == termbox.KeyArrowRight {
+		// 	err := MoveCamera(ctx, 1, 0)
+		// 	if err != nil {
+		// 		return
+		// 	}
+		// }
 
 		ctx.Flush()
 	}
 }
 
-func ClearCursorPosition(ctx *gui.Context, cursor Cursor) {
-	ctx.SetCell(cursor.X, cursor.Y, gui.DefaultCell)
+func MoveCursor(ctx *gui.Context, cursorPositionOffsetX, cursorPositionOffsetY int) {
+	clearCursorPosition(ctx)
+	updateCursorPosition(cursorPositionOffsetX, cursorPositionOffsetY)
+	drawCursorPosition(ctx)
 }
 
-func DrawCursorPosition(ctx *gui.Context, cursor Cursor) {
-	ctx.SetCell(cursor.X, cursor.Y, cursor.Cell)
+func clearCursorPosition(ctx *gui.Context) {
+	ctx.SetCell(cursor.X-view.X, cursor.Y-view.Y, gui.DefaultCell)
 }
 
-func UpdateCursorPosition(ctx *gui.Context, cursor Cursor, xOffset, yOffset int) Cursor {
-	screenX, screenY := ctx.Size()
+func drawCursorPosition(ctx *gui.Context) {
+	ctx.SetCell(cursor.X-view.X, cursor.Y-view.Y, cursor.Cell)
+}
 
-	cursor.X += xOffset
-	cursor.Y += yOffset
+func updateCursorPosition(cursorPositionOffsetX, cursorPositionOffsetY int) {
+	cursor.X += cursorPositionOffsetX
+	cursor.Y += cursorPositionOffsetY
 
-	if cursor.X >= screenX {
+	if cursor.X < 0 {
 		cursor.X = 0
 	}
 
-	if cursor.Y >= screenY {
+	if cursor.Y < 0 {
 		cursor.Y = 0
 	}
-
-	if cursor.X < 0 {
-		cursor.X = screenX - 1
-	}
-
-	if cursor.Y < 0 {
-		cursor.Y = screenY - 1
-	}
-
-	return cursor
 }
+
+// func MoveCamera(ctx *gui.Context, viewPositionOffsetX, viewPositionOffsetY int) error {
+// 	updateViewPosition(viewPositionOffsetX, viewPositionOffsetY)
+// 	err := updateViewContent(ctx)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	return nil
+// }
+
+// func updateViewPosition(viewPositionOffsetX, viewPositionOffsetY int) {
+// 	view.X += viewPositionOffsetX
+// 	view.Y += viewPositionOffsetY
+
+// 	if view.X < 0 {
+// 		view.X = 0
+// 	}
+// 	if view.Y < 0 {
+// 		view.Y = 0
+// 	}
+// }
+
+// func updateViewContent(ctx *gui.Context) error {
+// 	ctx.SetViewPosition(view.X, view.Y)
+// 	err := ctx.UpdateViewContent()
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	return nil
+// }

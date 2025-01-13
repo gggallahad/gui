@@ -33,9 +33,8 @@ type (
 	}
 )
 
-func newContext() (*Context, error) {
+func newContext(defaultCell Cell) (*Context, error) {
 	cells := make([][]Cell, 0)
-	defaultCell := DefaultCell
 
 	viewPositionX := 0
 	viewPositionY := 0
@@ -93,50 +92,44 @@ func (ctx *Context) newChildContext() *Context {
 
 // draw
 
-func (ctx *Context) UpdateView(viewPositionOffsetX, viewPositionOffsetY int) {
+func (ctx *Context) UpdateViewPosition(viewPositionOffsetX, viewPositionOffsetY int) {
 	*ctx.viewPositionX += viewPositionOffsetX
 	*ctx.viewPositionY += viewPositionOffsetY
-
-	if *ctx.viewPositionX < 0 {
-		*ctx.viewPositionX = 0
-	}
-	if *ctx.viewPositionY < 0 {
-		*ctx.viewPositionY = 0
-	}
 }
 
-func (ctx *Context) SetView(viewPositionX, viewPositionY int) {
+func (ctx *Context) SetViewPosition(viewPositionX, viewPositionY int) {
 	*ctx.viewPositionX = viewPositionX
 	*ctx.viewPositionY = viewPositionY
-
-	if *ctx.viewPositionX < 0 {
-		*ctx.viewPositionX = 0
-	}
-	if *ctx.viewPositionY < 0 {
-		*ctx.viewPositionY = 0
-	}
 }
 
-// func (ctx *Context) UpdateViewContent() {
-// 	if ctx.viewPositionY < len(*ctx.cells) {
-// 		for row := range *ctx.cells {
-// 			if ctx.viewPositionX < len(*ctx.cells[row]) {
+func (ctx *Context) UpdateViewContent() error {
+	foregroundAttribute := ctx.defaultCell.Foreground.toAttribute()
+	backgroundAttribute := ctx.defaultCell.Background.toAttribute()
 
-// 			}
-// 		}
-// 	}
-// }
+	err := ctx.clearTermboxScreen(foregroundAttribute, backgroundAttribute)
+	if err != nil {
+		return err
+	}
+
+	for rowIndex := *ctx.viewPositionY; rowIndex < len(*ctx.cells); rowIndex++ {
+		for columnIndex := *ctx.viewPositionX; columnIndex < len((*ctx.cells)[rowIndex]); columnIndex++ {
+			cell := (*ctx.cells)[rowIndex][columnIndex]
+			positionWithViewOffsetX := columnIndex - *ctx.viewPositionX
+			positionWithViewOffsetY := rowIndex - *ctx.viewPositionY
+			ctx.setTermboxCell(positionWithViewOffsetX, positionWithViewOffsetY, cell)
+		}
+	}
+
+	return nil
+}
 
 func (ctx *Context) SetCell(x, y int, cell Cell) {
-	ctx.setLocalCell(x, y, cell)
+	ctx.setlocalCell(x, y, cell)
 
-	foregroundAttribute := cell.Foreground.toAttribute()
-	backgroundAttribute := cell.Background.toAttribute()
-
-	termbox.SetCell(x-*ctx.viewPositionX, y-*ctx.viewPositionY, cell.Symbol, foregroundAttribute, backgroundAttribute)
+	ctx.setTermboxCell(x, y, cell)
 }
 
-func (ctx *Context) setLocalCell(x, y int, cell Cell) {
+func (ctx *Context) setlocalCell(x, y int, cell Cell) {
 	rowsMaxIndex := len(*ctx.cells) - 1
 	if y > rowsMaxIndex {
 		*ctx.cells = growSlice(*ctx.cells, y+1)
@@ -158,12 +151,48 @@ func (ctx *Context) setLocalCell(x, y int, cell Cell) {
 	(*ctx.cells)[y][x] = cell
 }
 
-func (ctx *Context) GetContent(x, y int) Cell {
-	if y < len(*ctx.cells)-1 || x < len((*ctx.cells)[y]) {
-		return *ctx.defaultCell
+func (ctx *Context) setTermboxCell(x, y int, cell Cell) {
+	foregroundAttribute := cell.Foreground.toAttribute()
+	backgroundAttribute := cell.Background.toAttribute()
+
+	termbox.SetCell(x, y, cell.Symbol, foregroundAttribute, backgroundAttribute)
+}
+
+func (ctx *Context) GetCell(x, y int) Cell {
+	// ?
+	if y >= len(*ctx.cells) || x >= len((*ctx.cells)[y]) {
+		termboxCell := ctx.getTermboxCell(x, y)
+
+		return termboxCell
 	}
 
-	return (*ctx.cells)[y][x]
+	localCell := ctx.getLocalCell(x, y)
+
+	return localCell
+}
+
+func (ctx *Context) getLocalCell(x, y int) Cell {
+	cell := (*ctx.cells)[y][x]
+
+	return cell
+}
+
+func (ctx *Context) getTermboxCell(x, y int) Cell {
+	termboxCell := termbox.GetCell(x, y)
+
+	var foregroundColor Color
+	var backgroundColor Color
+
+	foregroundColor.fromAttribute(termboxCell.Fg)
+	backgroundColor.fromAttribute(termboxCell.Bg)
+
+	cell := Cell{
+		Symbol:     termboxCell.Ch,
+		Foreground: foregroundColor,
+		Background: backgroundColor,
+	}
+
+	return cell
 }
 
 func (ctx *Context) Flush() error {
@@ -175,11 +204,13 @@ func (ctx *Context) Flush() error {
 	return nil
 }
 
-func (ctx *Context) ClearWithColor(foreground, background Color) error {
-	foregroundAttribute := foreground.toAttribute()
-	backgroundAttribute := foreground.toAttribute()
+// clear
 
-	err := termbox.Clear(foregroundAttribute, backgroundAttribute)
+func (ctx *Context) Clear() error {
+	foregroundAttribute := ctx.defaultCell.Foreground.toAttribute()
+	backgroundAttribute := ctx.defaultCell.Background.toAttribute()
+
+	err := ctx.clear(foregroundAttribute, backgroundAttribute)
 	if err != nil {
 		return err
 	}
@@ -187,8 +218,35 @@ func (ctx *Context) ClearWithColor(foreground, background Color) error {
 	return nil
 }
 
-func (ctx *Context) Clear() error {
-	err := termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+func (ctx *Context) ClearWithColor(foreground, background Color) error {
+	foregroundAttribute := foreground.toAttribute()
+	backgroundAttribute := foreground.toAttribute()
+
+	err := ctx.clear(foregroundAttribute, backgroundAttribute)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ctx *Context) clear(foregroundAttribute, backgroundAttribute termbox.Attribute) error {
+	ctx.clearLocalScreen()
+
+	err := ctx.clearTermboxScreen(foregroundAttribute, backgroundAttribute)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ctx *Context) clearLocalScreen() {
+	*ctx.cells = nil
+}
+
+func (ctx *Context) clearTermboxScreen(foregroundAttribute, backgroundAttribute termbox.Attribute) error {
+	err := termbox.Clear(foregroundAttribute, backgroundAttribute)
 	if err != nil {
 		return err
 	}

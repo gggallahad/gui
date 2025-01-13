@@ -11,9 +11,9 @@ type (
 var DefaultCell Cell = Cell{
 	Symbol: ' ',
 	Foreground: Color{
-		R: 0,
-		G: 0,
-		B: 0,
+		R: -1,
+		G: -1,
+		B: -1,
 	},
 	Background: Color{
 		R: -1,

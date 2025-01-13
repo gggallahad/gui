@@ -17,11 +17,18 @@ type (
 	}
 )
 
-func NewScreen() (*Screen, error) {
+func NewScreen(screenConfig ...ScreenConfig) (*Screen, error) {
+	var config ScreenConfig
+	if len(screenConfig) != 0 {
+		config = screenConfig[0]
+	} else {
+		config.DefaultCell = DefaultCell
+	}
+
 	initHandler := emptyInitHandler
 	handlers := make(map[State][]Handler)
 
-	context, err := newContext()
+	context, err := newContext(config.DefaultCell)
 	if err != nil {
 		return nil, err
 	}
