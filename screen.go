@@ -1,8 +1,6 @@
 package gui
 
 import (
-	"sync"
-
 	"github.com/nsf/termbox-go"
 )
 
@@ -12,8 +10,6 @@ type (
 		handlers    map[State][]Handler
 
 		context *Context
-
-		mutex sync.RWMutex
 	}
 )
 
@@ -43,21 +39,17 @@ func NewScreen(screenConfig ...ScreenConfig) (*Screen, error) {
 }
 
 func (s *Screen) BindInitHandler(handler InitHandler) {
-	s.mutex.Lock()
 	s.initHandler = handler
-	s.mutex.Unlock()
 }
 
 func (s *Screen) BindHandlers(state State, handlers ...Handler) {
-	s.mutex.Lock()
 	s.handlers[state] = handlers
-	s.mutex.Unlock()
 }
 
 func (s *Screen) Run() {
 	s.initHandler(s.context)
 
-	eventChannel := make(chan termbox.Event)
+	eventChannel := make(chan Event)
 
 	go s.getEvents(eventChannel)
 
@@ -74,14 +66,15 @@ RunLoop:
 	s.context.Cancel()
 }
 
-func (s *Screen) getEvents(eventChannel chan<- termbox.Event) {
+func (s *Screen) getEvents(eventChannel chan<- Event) {
 	for {
-		event := termbox.PollEvent()
+		termboxEvent := termbox.PollEvent()
+		event := termboxEventToEvent(termboxEvent)
 		eventChannel <- event
 	}
 }
 
-func (s *Screen) handleEvent(event termbox.Event) {
+func (s *Screen) handleEvent(event Event) {
 	currentState := s.context.getCurrentState()
 
 	handlers := s.getHandlers(currentState)

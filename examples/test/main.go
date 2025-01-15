@@ -43,6 +43,24 @@ var (
 		X: 0,
 		Y: 0,
 	}
+
+	setRowCell gui.Cell = gui.Cell{
+		Symbol: ' ',
+		Background: gui.Color{
+			R: 0,
+			G: 255,
+			B: 0,
+		},
+	}
+
+	setColumnCell gui.Cell = gui.Cell{
+		Symbol: ' ',
+		Background: gui.Color{
+			R: 0,
+			G: 0,
+			B: 255,
+		},
+	}
 )
 
 func main() {
@@ -80,29 +98,29 @@ func InitHandler(ctx *gui.Context) {
 	}
 }
 
-func KillMiddleware(ctx *gui.Context, event termbox.Event) {
-	switch event.Type {
-	case termbox.EventKey:
-		if event.Key == termbox.KeyEsc || event.Ch == 'q' {
+func KillMiddleware(ctx *gui.Context, eventType gui.Event) {
+	switch event := eventType.(type) {
+	case gui.EventKey:
+		if event.Key == termbox.KeyEsc || event.Symbol == 'q' {
 			ctx.Abort()
 			ctx.Kill()
 		}
 	}
 }
 
-func NoStateHandler(ctx *gui.Context, event termbox.Event) {
-	switch event.Type {
-	case termbox.EventKey:
-		if event.Ch == 'w' {
+func NoStateHandler(ctx *gui.Context, eventType gui.Event) {
+	switch event := eventType.(type) {
+	case gui.EventKey:
+		if event.Symbol == 'w' {
 			MoveCursor(ctx, 0, -1)
 		}
-		if event.Ch == 's' {
+		if event.Symbol == 's' {
 			MoveCursor(ctx, 0, 1)
 		}
-		if event.Ch == 'a' {
+		if event.Symbol == 'a' {
 			MoveCursor(ctx, -1, 0)
 		}
-		if event.Ch == 'd' {
+		if event.Symbol == 'd' {
 			MoveCursor(ctx, 1, 0)
 		}
 
@@ -129,6 +147,14 @@ func NoStateHandler(ctx *gui.Context, event termbox.Event) {
 			if err != nil {
 				return
 			}
+		}
+
+		if event.Symbol == 'r' {
+			SetRow(ctx)
+		}
+
+		if event.Symbol == 'c' {
+			SetColumn(ctx)
 		}
 
 		ctx.Flush()
@@ -192,4 +218,26 @@ func updateViewContent(ctx *gui.Context) error {
 	}
 
 	return nil
+}
+
+func SetRow(ctx *gui.Context) {
+	rowCells := make([]gui.Cell, 0, cursor.X)
+	for range cursor.X {
+		rowCells = append(rowCells, setRowCell)
+	}
+
+	rowCells = append(rowCells, cursor.Cell)
+
+	ctx.SetRow(cursor.Y, rowCells)
+}
+
+func SetColumn(ctx *gui.Context) {
+	columnCells := make([]gui.Cell, 0, cursor.Y)
+	for range cursor.Y {
+		columnCells = append(columnCells, setColumnCell)
+	}
+
+	columnCells = append(columnCells, cursor.Cell)
+
+	ctx.SetColumn(cursor.X, columnCells)
 }
