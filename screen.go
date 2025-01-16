@@ -6,8 +6,10 @@ import (
 
 type (
 	Screen struct {
-		initHandler InitHandler
-		handlers    map[State][]Handler
+		initHandlers      []InitHandler
+		globalMiddlewares []Handler
+		globalPostwares   []Handler
+		handlers          map[State][]Handler
 
 		context *Context
 	}
@@ -21,7 +23,6 @@ func NewScreen(screenConfig ...ScreenConfig) (*Screen, error) {
 		config.DefaultCell = DefaultCell
 	}
 
-	initHandler := emptyInitHandler
 	handlers := make(map[State][]Handler)
 
 	context, err := newContext(config.DefaultCell)
@@ -30,16 +31,26 @@ func NewScreen(screenConfig ...ScreenConfig) (*Screen, error) {
 	}
 
 	screen := Screen{
-		initHandler: initHandler,
-		handlers:    handlers,
-		context:     context,
+		initHandlers:      nil,
+		globalMiddlewares: nil,
+		globalPostwares:   nil,
+		handlers:          handlers,
+		context:           context,
 	}
 
 	return &screen, nil
 }
 
-func (s *Screen) BindInitHandler(handler InitHandler) {
-	s.initHandler = handler
+func (s *Screen) BindInitHandlers(handlers ...InitHandler) {
+	s.initHandlers = handlers
+}
+
+func (s *Screen) BindGlobalMiddlewares(middlewares ...Handler) {
+	s.globalMiddlewares = middlewares
+}
+
+func (s *Screen) BindGlobalPostwares(postwares ...Handler) {
+	s.globalPostwares = postwares
 }
 
 func (s *Screen) BindHandlers(state State, handlers ...Handler) {
@@ -47,7 +58,9 @@ func (s *Screen) BindHandlers(state State, handlers ...Handler) {
 }
 
 func (s *Screen) Run() {
-	s.initHandler(s.context)
+	for i := range s.initHandlers {
+		s.initHandlers[i](s.context)
+	}
 
 	eventChannel := make(chan Event)
 
@@ -82,9 +95,17 @@ func (s *Screen) handleEvent(event Event) {
 
 	childContext.resetData(childContext)
 
+	for i := range s.globalMiddlewares {
+		s.globalMiddlewares[i](childContext, event)
+	}
+
 	for handlerIndex := childContext.getHandlerIndex(); handlerIndex < len(handlers); handlerIndex = childContext.getHandlerIndex() {
 		handlers[handlerIndex](childContext, event)
 		childContext.addHandlerIndex()
+	}
+
+	for i := range s.globalPostwares {
+		s.globalPostwares[i](childContext, event)
 	}
 
 	childContext.Cancel()

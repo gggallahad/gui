@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"strings"
 
 	"github.com/gggallahad/gui"
 	"github.com/nsf/termbox-go"
@@ -15,8 +17,10 @@ type (
 	}
 
 	View struct {
-		X int
-		Y int
+		CurrentX  int
+		CurrentY  int
+		PreviousX int
+		PreviousY int
 	}
 )
 
@@ -40,8 +44,10 @@ var (
 	}
 
 	view View = View{
-		X: 0,
-		Y: 0,
+		CurrentX:  0,
+		CurrentY:  0,
+		PreviousX: 0,
+		PreviousY: 0,
 	}
 
 	setRowCell gui.Cell = gui.Cell{
@@ -61,6 +67,21 @@ var (
 			B: 255,
 		},
 	}
+
+	statusLineForeground gui.Color = gui.Color{
+		R: 1,
+		G: 229,
+		B: 210,
+	}
+
+	statusLineBackground gui.Color = gui.Color{
+		R: 21,
+		G: 21,
+		B: 21,
+	}
+
+	statusLineOffsetX int = 3
+	statusLineOffsetY int = 40
 )
 
 func main() {
@@ -77,9 +98,13 @@ func main() {
 	}
 	defer screen.Close()
 
-	screen.BindInitHandler(InitHandler)
+	screen.BindInitHandlers(InitHandler)
 
-	screen.BindHandlers(gui.NoState, KillMiddleware, NoStateHandler)
+	screen.BindGlobalMiddlewares(KillMiddleware)
+
+	screen.BindGlobalPostwares(DrawStatusLine, SetVariables)
+
+	screen.BindHandlers(gui.NoState, NoStateHandler)
 
 	screen.Run()
 }
@@ -91,6 +116,7 @@ func InitHandler(ctx *gui.Context) {
 	}
 
 	drawCursorPosition(ctx)
+	DrawStatusLine(ctx, nil)
 
 	err = ctx.Flush()
 	if err != nil {
@@ -161,7 +187,7 @@ func NoStateHandler(ctx *gui.Context, eventType gui.Event) {
 			SetText(ctx)
 		}
 
-		ctx.Flush()
+		// ctx.Flush()
 	}
 }
 
@@ -203,19 +229,19 @@ func MoveCamera(ctx *gui.Context, viewPositionOffsetX, viewPositionOffsetY int) 
 }
 
 func updateViewPosition(viewPositionOffsetX, viewPositionOffsetY int) {
-	view.X += viewPositionOffsetX
-	view.Y += viewPositionOffsetY
+	view.CurrentX += viewPositionOffsetX
+	view.CurrentY += viewPositionOffsetY
 
-	if view.X < 0 {
-		view.X = 0
+	if view.CurrentX < 0 {
+		view.CurrentX = 0
 	}
-	if view.Y < 0 {
-		view.Y = 0
+	if view.CurrentY < 0 {
+		view.CurrentY = 0
 	}
 }
 
 func updateViewContent(ctx *gui.Context) error {
-	ctx.SetViewPosition(view.X, view.Y)
+	ctx.SetViewPosition(view.CurrentX, view.CurrentY)
 	err := ctx.UpdateViewContent()
 	if err != nil {
 		return err
@@ -247,5 +273,21 @@ func SetColumn(ctx *gui.Context) {
 }
 
 func SetText(ctx *gui.Context) {
-	ctx.SetText(cursor.X+1, cursor.Y, "text")
+	ctx.SetText(cursor.X+1, cursor.Y, "text", gui.DefaultCell.Foreground, gui.DefaultCell.Background)
+}
+
+func DrawStatusLine(ctx *gui.Context, eventType gui.Event) {
+	ctx.ClearRow(view.PreviousY + statusLineOffsetY)
+	spaceBetweenTypesCount := 5
+	spaceBetweenElementsCount := 3
+	spaceBetweenTypesString := strings.Repeat(" ", spaceBetweenTypesCount)
+	spaceBetweenElementsString := strings.Repeat(" ", spaceBetweenElementsCount)
+	text := fmt.Sprintf("cursorX: %d%scursorY: %d%scameraX: %d%scameraY: %d", cursor.X, spaceBetweenElementsString, cursor.Y, spaceBetweenTypesString, view.CurrentX, spaceBetweenElementsString, view.CurrentY)
+	ctx.SetText(view.CurrentX+statusLineOffsetX, view.CurrentY+statusLineOffsetY, text, statusLineForeground, statusLineBackground)
+	ctx.Flush()
+}
+
+func SetVariables(ctx *gui.Context, eventType gui.Event) {
+	view.PreviousX = view.CurrentX
+	view.PreviousY = view.CurrentY
 }

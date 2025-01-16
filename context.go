@@ -156,13 +156,13 @@ func (ctx *Context) setTermboxCell(x, y int, cell Cell) {
 	termbox.SetCell(x, y, cell.Symbol, foregroundAttribute, backgroundAttribute)
 }
 
-func (ctx *Context) SetText(x, y int, text string) {
-	ctx.setLocalText(x, y, text)
+func (ctx *Context) SetText(x, y int, text string, foreground, background Color) {
+	ctx.setLocalText(x, y, text, foreground, background)
 
-	ctx.setTermboxText(x, y, text)
+	ctx.setTermboxText(x, y, text, foreground, background)
 }
 
-func (ctx *Context) setLocalText(x, y int, text string) {
+func (ctx *Context) setLocalText(x, y int, text string, foreground, background Color) {
 	// добавление недостающих строк
 	maxY := len(*ctx.cells) - 1
 	if y > maxY {
@@ -184,17 +184,27 @@ func (ctx *Context) setLocalText(x, y int, text string) {
 		}
 	}
 
+	textCell := Cell{
+		Foreground: foreground,
+		Background: background,
+	}
+
 	for _, symbox := range text {
-		(*ctx.cells)[y][x].Symbol = symbox
+		textCell.Symbol = symbox
+		(*ctx.cells)[y][x] = textCell
 		x++
 	}
 }
 
-func (ctx *Context) setTermboxText(x, y int, text string) {
+func (ctx *Context) setTermboxText(x, y int, text string, foreground, background Color) {
+	textCell := Cell{
+		Foreground: foreground,
+		Background: background,
+	}
+
 	for _, symbol := range text {
-		cell := ctx.getLocalCell(x, y)
-		cell.Symbol = symbol
-		ctx.setTermboxCell(x, y, cell)
+		textCell.Symbol = symbol
+		ctx.setTermboxCell(x, y, textCell)
 		x++
 	}
 }
@@ -361,7 +371,7 @@ func (ctx *Context) ClearRow(y int) {
 }
 
 func (ctx *Context) clearLocalRow(y int) {
-	maxY := len((*ctx.cells)[y]) - 1
+	maxY := len((*ctx.cells)) - 1
 	if y > maxY {
 		return
 	}
@@ -370,7 +380,7 @@ func (ctx *Context) clearLocalRow(y int) {
 }
 
 func (ctx *Context) clearTermboxRow(y int) {
-	maxY := len((*ctx.cells)[y]) - 1
+	maxY := len((*ctx.cells)) - 1
 	if y > maxY {
 		return
 	}
