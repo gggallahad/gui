@@ -156,6 +156,49 @@ func (ctx *Context) setTermboxCell(x, y int, cell Cell) {
 	termbox.SetCell(x, y, cell.Symbol, foregroundAttribute, backgroundAttribute)
 }
 
+func (ctx *Context) SetText(x, y int, text string) {
+	ctx.setLocalText(x, y, text)
+
+	ctx.setTermboxText(x, y, text)
+}
+
+func (ctx *Context) setLocalText(x, y int, text string) {
+	// добавление недостающих строк
+	maxY := len(*ctx.cells) - 1
+	if y > maxY {
+		*ctx.cells = growSlice(*ctx.cells, y+1)
+		newRows := y - maxY
+		for range newRows {
+			*ctx.cells = append(*ctx.cells, []Cell{})
+		}
+	}
+
+	// добавление недостающих столбцов в нужную строку
+	maxX := len((*ctx.cells)[y]) - 1
+	newMaxX := x + len(text)
+	if newMaxX > maxX {
+		(*ctx.cells)[y] = growSlice((*ctx.cells)[y], newMaxX+1)
+		newColumns := newMaxX - maxX
+		for range newColumns {
+			(*ctx.cells)[y] = append((*ctx.cells)[y], *ctx.defaultCell)
+		}
+	}
+
+	for _, symbox := range text {
+		(*ctx.cells)[y][x].Symbol = symbox
+		x++
+	}
+}
+
+func (ctx *Context) setTermboxText(x, y int, text string) {
+	for _, symbol := range text {
+		cell := ctx.getLocalCell(x, y)
+		cell.Symbol = symbol
+		ctx.setTermboxCell(x, y, cell)
+		x++
+	}
+}
+
 func (ctx *Context) SetRow(y int, cells []Cell) {
 	ctx.ClearRow(y)
 
@@ -247,19 +290,19 @@ func (ctx *Context) getLocalCell(x, y int) Cell {
 }
 
 // func (ctx *Context) getTermboxCell(x, y int) Cell {
+// 	x -= *ctx.viewPositionX
+// 	y -= *ctx.viewPositionY
+
 // 	termboxCell := termbox.GetCell(x, y)
 
-// 	!!!var foregroundColor Color
-// 	!!!var backgroundColor Color
+// 	foregroundColor := (&Color{}).fromAttribute(termboxCell.Fg)
+// 	backgroundColor := (&Color{}).fromAttribute(termboxCell.Bg)
 
-// 	!!!foregroundColor.fromAttribute(termboxCell.Fg)
-// 	!!!backgroundColor.fromAttribute(termboxCell.Bg)
-
-// 	!!!cell := Cell{
-// 	!!!	Symbol:     termboxCell.Ch,
-// 	!!!	Foreground: foregroundColor,
-// 	!!!	Background: backgroundColor,
-// 	!!!}
+// 	cell := Cell{
+// 		Symbol:     termboxCell.Ch,
+// 		Foreground: foregroundColor,
+// 		Background: backgroundColor,
+// 	}
 
 // 	return cell
 // }

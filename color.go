@@ -20,13 +20,23 @@ func (c *Color) toAttribute() termbox.Attribute {
 	return attribute
 }
 
-// func (c *Color) fromAttribute(attribute termbox.Attribute) Color {
-// 	r, g, b := termbox.AttributeToRGB(attribute)
-// 	color := Color{
-// 		R: int(r),
-// 		G: int(g),
-// 		B: int(b),
-// 	}
+func (c *Color) fromAttribute(attribute termbox.Attribute) Color {
+	if attribute == termbox.ColorDefault {
+		color := Color{
+			R: -1,
+			G: -1,
+			B: -1,
+		}
 
-// 	return color
-// }
+		return color
+	}
+
+	r, g, b := termbox.AttributeToRGB(attribute)
+	color := Color{
+		R: int(r),
+		G: int(g),
+		B: int(b),
+	}
+
+	return color
+}

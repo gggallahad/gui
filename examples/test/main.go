@@ -157,6 +157,10 @@ func NoStateHandler(ctx *gui.Context, eventType gui.Event) {
 			SetColumn(ctx)
 		}
 
+		if event.Symbol == 't' {
+			SetText(ctx)
+		}
+
 		ctx.Flush()
 	}
 }
@@ -240,4 +244,8 @@ func SetColumn(ctx *gui.Context) {
 	columnCells = append(columnCells, cursor.Cell)
 
 	ctx.SetColumn(cursor.X, columnCells)
+}
+
+func SetText(ctx *gui.Context) {
+	ctx.SetText(cursor.X+1, cursor.Y, "text")
 }
