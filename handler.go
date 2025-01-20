@@ -1,11 +1,13 @@
 package gui
 
 type (
-	InitHandler func(*Context)
-	Handler     func(*Context, Event)
+	InitHandler       func(*Context)
+	BackgroundHandler func(*Context)
+	Handler           func(*Context, Event)
 )
 
 var (
-	emptyInitHandler InitHandler = func(*Context) {}
-	emptyHandler     Handler     = func(*Context, Event) {}
+	emptyInitHandler       InitHandler       = func(*Context) {}
+	emptyBackgroundHandler BackgroundHandler = func(*Context) {}
+	emptyHandler           Handler           = func(*Context, Event) {}
 )

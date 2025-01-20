@@ -6,10 +6,11 @@ import (
 
 type (
 	Screen struct {
-		initHandlers      []InitHandler
-		globalMiddlewares []Handler
-		globalPostwares   []Handler
-		handlers          map[State][]Handler
+		initHandlers       []InitHandler
+		backgroundHandlers []BackgroundHandler
+		globalMiddlewares  []Handler
+		globalPostwares    []Handler
+		handlers           map[State][]Handler
 
 		context *Context
 	}
@@ -31,26 +32,31 @@ func NewScreen(screenConfig ...ScreenConfig) (*Screen, error) {
 	}
 
 	screen := Screen{
-		initHandlers:      nil,
-		globalMiddlewares: nil,
-		globalPostwares:   nil,
-		handlers:          handlers,
-		context:           context,
+		initHandlers:       nil,
+		backgroundHandlers: nil,
+		globalMiddlewares:  nil,
+		globalPostwares:    nil,
+		handlers:           handlers,
+		context:            context,
 	}
 
 	return &screen, nil
 }
 
-func (s *Screen) BindInitHandlers(handlers ...InitHandler) {
-	s.initHandlers = handlers
+func (s *Screen) BindInitHandlers(initHandlers ...InitHandler) {
+	s.initHandlers = initHandlers
 }
 
-func (s *Screen) BindGlobalMiddlewares(middlewares ...Handler) {
-	s.globalMiddlewares = middlewares
+func (s *Screen) BindBackgroundHandlers(backgroundHandlers ...BackgroundHandler) {
+	s.backgroundHandlers = backgroundHandlers
 }
 
-func (s *Screen) BindGlobalPostwares(postwares ...Handler) {
-	s.globalPostwares = postwares
+func (s *Screen) BindGlobalMiddlewares(globalMiddlewares ...Handler) {
+	s.globalMiddlewares = globalMiddlewares
+}
+
+func (s *Screen) BindGlobalPostwares(globalPostwares ...Handler) {
+	s.globalPostwares = globalPostwares
 }
 
 func (s *Screen) BindHandlers(state State, handlers ...Handler) {
@@ -60,6 +66,10 @@ func (s *Screen) BindHandlers(state State, handlers ...Handler) {
 func (s *Screen) Run() {
 	for i := range s.initHandlers {
 		s.initHandlers[i](s.context)
+	}
+
+	for i := range s.backgroundHandlers {
+		go s.backgroundHandlers[i](s.context)
 	}
 
 	eventChannel := make(chan Event)
