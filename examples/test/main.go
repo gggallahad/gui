@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/gggallahad/gui"
-	"github.com/nsf/termbox-go"
 )
 
 type (
@@ -117,17 +116,12 @@ func InitHandler(ctx *gui.Context) {
 
 	drawCursorPosition(ctx)
 	DrawStatusLine(ctx, nil)
-
-	err = ctx.Flush()
-	if err != nil {
-		return
-	}
 }
 
 func KillMiddleware(ctx *gui.Context, eventType gui.Event) {
 	switch event := eventType.(type) {
 	case gui.EventKey:
-		if event.Key == termbox.KeyEsc || event.Symbol == 'q' {
+		if event.Key == gui.KeyEsc || event.Symbol == 'q' {
 			ctx.Abort()
 			ctx.Kill()
 		}
@@ -150,25 +144,25 @@ func NoStateHandler(ctx *gui.Context, eventType gui.Event) {
 			MoveCursor(ctx, 1, 0)
 		}
 
-		if event.Key == termbox.KeyArrowUp {
+		if event.Key == gui.KeyArrowUp {
 			err := MoveCamera(ctx, 0, -1)
 			if err != nil {
 				return
 			}
 		}
-		if event.Key == termbox.KeyArrowDown {
+		if event.Key == gui.KeyArrowDown {
 			err := MoveCamera(ctx, 0, 1)
 			if err != nil {
 				return
 			}
 		}
-		if event.Key == termbox.KeyArrowLeft {
+		if event.Key == gui.KeyArrowLeft {
 			err := MoveCamera(ctx, -1, 0)
 			if err != nil {
 				return
 			}
 		}
-		if event.Key == termbox.KeyArrowRight {
+		if event.Key == gui.KeyArrowRight {
 			err := MoveCamera(ctx, 1, 0)
 			if err != nil {
 				return
@@ -186,8 +180,6 @@ func NoStateHandler(ctx *gui.Context, eventType gui.Event) {
 		if event.Symbol == 't' {
 			SetText(ctx)
 		}
-
-		// ctx.Flush()
 	}
 }
 
@@ -278,13 +270,19 @@ func SetText(ctx *gui.Context) {
 
 func DrawStatusLine(ctx *gui.Context, eventType gui.Event) {
 	ctx.ClearRow(view.PreviousY + statusLineOffsetY)
+
 	spaceBetweenTypesCount := 5
 	spaceBetweenElementsCount := 3
 	spaceBetweenTypesString := strings.Repeat(" ", spaceBetweenTypesCount)
 	spaceBetweenElementsString := strings.Repeat(" ", spaceBetweenElementsCount)
 	text := fmt.Sprintf("cursorX: %d%scursorY: %d%scameraX: %d%scameraY: %d", cursor.X, spaceBetweenElementsString, cursor.Y, spaceBetweenTypesString, view.CurrentX, spaceBetweenElementsString, view.CurrentY)
+
 	ctx.SetText(view.CurrentX+statusLineOffsetX, view.CurrentY+statusLineOffsetY, text, statusLineForeground, statusLineBackground)
-	ctx.Flush()
+
+	err := ctx.Flush()
+	if err != nil {
+		return
+	}
 }
 
 func SetVariables(ctx *gui.Context, eventType gui.Event) {

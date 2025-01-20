@@ -9,8 +9,8 @@ type (
 
 	EventKey struct {
 		Symbol   rune
-		Key      termbox.Key
-		Modifier termbox.Modifier
+		Key      Key
+		Modifier Modifier
 	}
 
 	EventMouse struct {
@@ -33,8 +33,8 @@ func termboxEventToEvent(termboxEvent termbox.Event) Event {
 	case termbox.EventKey:
 		eventKey := EventKey{
 			Symbol:   termboxEvent.Ch,
-			Key:      termboxEvent.Key,
-			Modifier: termboxEvent.Mod,
+			Key:      Key(termboxEvent.Key),
+			Modifier: Modifier(termboxEvent.Mod),
 		}
 		event = eventKey
 	case termbox.EventMouse:
