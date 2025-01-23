@@ -8,16 +8,12 @@ type (
 	}
 )
 
-var DefaultCell Cell = Cell{
-	Symbol: ' ',
-	Foreground: Color{
-		R: -1,
-		G: -1,
-		B: -1,
-	},
-	Background: Color{
-		R: -1,
-		G: -1,
-		B: -1,
-	},
-}
+var (
+	DefaultSymbol rune = ' '
+
+	DefaultCell Cell = Cell{
+		Symbol:     DefaultSymbol,
+		Foreground: DefaultColor,
+		Background: DefaultColor,
+	}
+)

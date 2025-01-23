@@ -34,11 +34,7 @@ var (
 				G: 0,
 				B: 0,
 			},
-			Background: gui.Color{
-				R: -1,
-				G: -1,
-				B: -1,
-			},
+			Background: gui.DefaultColor,
 		},
 	}
 
@@ -265,7 +261,7 @@ func SetColumn(ctx *gui.Context) {
 }
 
 func SetText(ctx *gui.Context) {
-	ctx.SetText(cursor.X+1, cursor.Y, "text", gui.DefaultCell.Foreground, gui.DefaultCell.Background)
+	ctx.SetText(cursor.X+1, cursor.Y, "text", gui.DefaultColor, gui.DefaultColor)
 }
 
 func DrawStatusLine(ctx *gui.Context, eventType gui.Event) {

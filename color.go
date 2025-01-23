@@ -10,8 +10,16 @@ type (
 	}
 )
 
+var (
+	DefaultColor Color = Color{
+		R: -1,
+		G: -1,
+		B: -1,
+	}
+)
+
 func (c *Color) toAttribute() termbox.Attribute {
-	if c.R == -1 && c.G == -1 && c.B == -1 {
+	if *c == DefaultColor {
 		return termbox.ColorDefault
 	}
 
@@ -20,23 +28,19 @@ func (c *Color) toAttribute() termbox.Attribute {
 	return attribute
 }
 
-func (c *Color) fromAttribute(attribute termbox.Attribute) Color {
-	if attribute == termbox.ColorDefault {
-		color := Color{
-			R: -1,
-			G: -1,
-			B: -1,
-		}
+// func (c *Color) fromAttribute(attribute termbox.Attribute) Color {
+// 	if attribute == termbox.ColorDefault {
+// 		color := DefaultColor
 
-		return color
-	}
+// 		return color
+// 	}
 
-	r, g, b := termbox.AttributeToRGB(attribute)
-	color := Color{
-		R: int(r),
-		G: int(g),
-		B: int(b),
-	}
+// 	r, g, b := termbox.AttributeToRGB(attribute)
+// 	color := Color{
+// 		R: int(r),
+// 		G: int(g),
+// 		B: int(b),
+// 	}
 
-	return color
-}
+// 	return color
+// }
