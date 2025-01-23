@@ -97,7 +97,12 @@ func (s *Screen) getEvents(eventChannel chan<- Event) {
 	}
 }
 
-func (s *Screen) handleEvent(event Event) {
+func (s *Screen) handleEvent(eventType Event) {
+	switch event := eventType.(type) {
+	case *EventResize:
+		s.context.setViewSize(event.X, event.Y)
+	}
+
 	currentState := s.context.getCurrentState()
 
 	handlers := s.getHandlers(currentState)
@@ -106,16 +111,16 @@ func (s *Screen) handleEvent(event Event) {
 	childContext.resetData(childContext)
 
 	for i := range s.globalMiddlewares {
-		s.globalMiddlewares[i](childContext, event)
+		s.globalMiddlewares[i](childContext, eventType)
 	}
 
 	for handlerIndex := childContext.getHandlerIndex(); handlerIndex < len(handlers); handlerIndex = childContext.getHandlerIndex() {
-		handlers[handlerIndex](childContext, event)
+		handlers[handlerIndex](childContext, eventType)
 		childContext.addHandlerIndex()
 	}
 
 	for i := range s.globalPostwares {
-		s.globalPostwares[i](childContext, event)
+		s.globalPostwares[i](childContext, eventType)
 	}
 
 	childContext.Cancel()
@@ -130,6 +135,9 @@ func (s *Screen) Init() error {
 	}
 
 	termbox.SetOutputMode(termbox.OutputRGB)
+
+	viewSizeX, viewSizeY := termbox.Size()
+	s.context.setViewSize(viewSizeX, viewSizeY)
 
 	return nil
 }

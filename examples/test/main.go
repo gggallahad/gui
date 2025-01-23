@@ -116,7 +116,7 @@ func InitHandler(ctx *gui.Context) {
 
 func KillMiddleware(ctx *gui.Context, eventType gui.Event) {
 	switch event := eventType.(type) {
-	case gui.EventKey:
+	case *gui.EventKey:
 		if event.Key == gui.KeyEsc || event.Symbol == 'q' {
 			ctx.Abort()
 			ctx.Kill()
@@ -126,7 +126,7 @@ func KillMiddleware(ctx *gui.Context, eventType gui.Event) {
 
 func NoStateHandler(ctx *gui.Context, eventType gui.Event) {
 	switch event := eventType.(type) {
-	case gui.EventKey:
+	case *gui.EventKey:
 		if event.Symbol == 'w' {
 			MoveCursor(ctx, 0, -1)
 		}

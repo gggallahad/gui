@@ -105,8 +105,10 @@ func (ctx *Context) UpdateViewContent() error {
 	}
 
 	// перерисовка клеток которые попадают в видимую область
-	for y := *ctx.viewPositionY; y < len(*ctx.cells); y++ {
-		for x := *ctx.viewPositionX; x < len((*ctx.cells)[y]); x++ {
+	viewEndY := min(*ctx.viewPositionY+*ctx.viewSizeY, len(*ctx.cells))
+	for y := *ctx.viewPositionY; y < viewEndY; y++ {
+		viewEndX := min(*ctx.viewPositionX+*ctx.viewSizeX, len((*ctx.cells)[y]))
+		for x := *ctx.viewPositionX; x < viewEndX; x++ {
 			ctx.setTermboxCell(x, y, (*ctx.cells)[y][x])
 		}
 	}
@@ -432,6 +434,15 @@ func (ctx *Context) Kill() {
 }
 
 // util
+
+func (ctx *Context) ViewSize() (int, int) {
+	return *ctx.viewSizeX, *ctx.viewSizeY
+}
+
+func (ctx *Context) setViewSize(x, y int) {
+	*ctx.viewSizeX = x
+	*ctx.viewSizeY = y
+}
 
 func (ctx *Context) getCurrentState() State {
 	state := (*ctx.states)[*ctx.stateIndex]

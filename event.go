@@ -9,21 +9,29 @@ type (
 
 	EventKey struct {
 		Symbol   rune
-		Key      Key
+		Key      KeyboardKey
 		Modifier Modifier
 	}
 
 	EventMouse struct {
 		X   int
 		Y   int
-		Key termbox.Key
+		Key MouseKey
+	}
+
+	EventResize struct {
+		X int
+		Y int
 	}
 )
 
-func (e EventKey) IsEvent() {
+func (e *EventKey) IsEvent() {
 }
 
-func (e EventMouse) IsEvent() {
+func (e *EventMouse) IsEvent() {
+}
+
+func (e *EventResize) IsEvent() {
 }
 
 func termboxEventToEvent(termboxEvent termbox.Event) Event {
@@ -31,21 +39,26 @@ func termboxEventToEvent(termboxEvent termbox.Event) Event {
 
 	switch termboxEvent.Type {
 	case termbox.EventKey:
-		eventKey := EventKey{
+		eventKey := &EventKey{
 			Symbol:   termboxEvent.Ch,
-			Key:      Key(termboxEvent.Key),
+			Key:      KeyboardKey(termboxEvent.Key),
 			Modifier: Modifier(termboxEvent.Mod),
 		}
 		event = eventKey
 	case termbox.EventMouse:
-		eventMouse := EventMouse{
+		eventMouse := &EventMouse{
 			X:   termboxEvent.MouseX,
 			Y:   termboxEvent.MouseY,
-			Key: termboxEvent.Key,
+			Key: MouseKey(termboxEvent.Key),
 		}
 		event = eventMouse
+	case termbox.EventResize:
+		eventResize := &EventResize{
+			X: termboxEvent.Width,
+			Y: termboxEvent.Height,
+		}
+		event = eventResize
 	}
 
 	return event
-
 }
